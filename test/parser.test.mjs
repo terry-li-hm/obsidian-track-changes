@@ -117,6 +117,31 @@ test("multi-author thread (Claude root, GPT reply) preserves both names", () => 
   assert.equal(r.nodes[r.threads[0].replyIndexes[0]].authorName, "GPT");
 });
 
+test("comment Roughdraft attributes are part of the parsed node range", () => {
+  const src = 'x {>>Codex: sharpen scope<<}{id="c1" by="Codex" at="2026-05-26T14:47:41Z"} y';
+  const r = parse(src);
+  assert.equal(r.nodes.length, 1);
+  assert.equal(r.nodes[0].kind, "comment");
+  assert.equal(r.nodes[0].raw, '{>>Codex: sharpen scope<<}{id="c1" by="Codex" at="2026-05-26T14:47:41Z"}');
+  assert.equal(r.nodes[0].attributesRaw, '{id="c1" by="Codex" at="2026-05-26T14:47:41Z"}');
+  assert.deepEqual(r.nodes[0].attributes, {
+    id: "c1",
+    by: "Codex",
+    at: "2026-05-26T14:47:41Z",
+  });
+  assert.equal(src.slice(r.nodes[0].from, r.nodes[0].to), r.nodes[0].raw);
+});
+
+test("Roughdraft attributed comments still form adjacent reply threads", () => {
+  const src = '{>>Codex: root<<}{id="c1" by="Codex"}{>>Claude: reply<<}{id="c2" by="Claude" re="c1"}';
+  const r = parse(src);
+  assert.equal(r.nodes.length, 2);
+  assert.equal(r.threads.length, 1);
+  assert.equal(r.threads[0].replyIndexes.length, 1);
+  assert.equal(r.nodes[r.threads[0].rootIndex].attributes.id, "c1");
+  assert.equal(r.nodes[r.threads[0].replyIndexes[0]].attributes.re, "c1");
+});
+
 test("parses addition", () => {
   const r = parse("x {++hello++} y");
   assert.equal(r.nodes.length, 1);
@@ -143,6 +168,23 @@ test("parses highlight", () => {
   const r = parse("x {==look==} y");
   assert.equal(r.nodes.length, 1);
   assert.equal(r.nodes[0].kind, "highlight");
+});
+
+test("Roughdraft attributes are parsed after every non-comment mark kind", () => {
+  const cases = [
+    ["addition", 'x {++hello++}{id="a1" by="Codex"} y'],
+    ["deletion", 'x {--gone--}{id="d1" by="Codex"} y'],
+    ["substitution", 'x {~~old~>new~~}{id="s1" by="Codex"} y'],
+    ["highlight", 'x {==look==}{id="h1" by="Codex"} y'],
+  ];
+
+  for (const [kind, src] of cases) {
+    const r = parse(src);
+    assert.equal(r.nodes.length, 1);
+    assert.equal(r.nodes[0].kind, kind);
+    assert.equal(r.nodes[0].attributes.by, "Codex");
+    assert.equal(src.slice(r.nodes[0].from, r.nodes[0].to), r.nodes[0].raw);
+  }
 });
 
 test("mixed forms in document order", () => {

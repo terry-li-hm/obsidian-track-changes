@@ -100,6 +100,24 @@ test("removeHighlight strips the wrapper and keeps the text", () => {
   assert.equal(out, "x look here y");
 });
 
+test("accept/reject operations remove trailing Roughdraft attributes with the mark", () => {
+  const cases = [
+    ['x {++ins++}{id="a1" by="Codex"} y', acceptAddition, "x ins y"],
+    ['x {++ins++}{id="a1" by="Codex"} y', rejectAddition, "x  y"],
+    ['x {--gone--}{id="d1" by="Codex"} y', acceptDeletion, "x  y"],
+    ['x {--gone--}{id="d1" by="Codex"} y', rejectDeletion, "x gone y"],
+    ['x {~~old~>new~~}{id="s1" by="Codex"} y', acceptSubstitution, "x new y"],
+    ['x {~~old~>new~~}{id="s1" by="Codex"} y', rejectSubstitution, "x old y"],
+    ['x {==look here==}{id="h1" by="Codex"} y', removeHighlight, "x look here y"],
+  ];
+
+  for (const [src, op, expected] of cases) {
+    const r = parse(src);
+    const out = applyEdits(src, [op(r.nodes[0])]);
+    assert.equal(out, expected);
+  }
+});
+
 test("deleteCommentNode removes one message of a thread", () => {
   const src = "x {>>Claude: a<<}{>>done<<} y";
   const r = parse(src);
@@ -107,8 +125,22 @@ test("deleteCommentNode removes one message of a thread", () => {
   assert.equal(out, "x {>>Claude: a<<} y");
 });
 
+test("deleteCommentNode removes a Roughdraft-attributed comment and its attributes", () => {
+  const src = 'x {>>Claude: a<<}{id="c1" by="Claude"} y';
+  const r = parse(src);
+  const out = applyEdits(src, [deleteCommentNode(r.nodes[0])]);
+  assert.equal(out, "x  y");
+});
+
 test("deleteThread removes all messages", () => {
   const src = "x {>>Claude: a<<}{>>done<<} y";
+  const r = parse(src);
+  const out = applyEdits(src, [deleteThread(src, r.threads[0])]);
+  assert.equal(out, "x  y");
+});
+
+test("deleteThread removes all Roughdraft-attributed replies without orphan metadata", () => {
+  const src = 'x {>>Claude: a<<}{id="c1" by="Claude"}{>>Codex: b<<}{id="c2" by="Codex" re="c1"} y';
   const r = parse(src);
   const out = applyEdits(src, [deleteThread(src, r.threads[0])]);
   assert.equal(out, "x  y");
@@ -160,6 +192,13 @@ test("finalizeEdits with defaults: keep additions, keep original prose", () => {
   const r = parse(src);
   const out = applyEdits(src, finalizeEdits(r, DEFAULT_FINALIZE));
   // default: additions accept, deletions reject (keep), subs reject (keep old), strip comments
+  assert.equal(out, "a x b y c o d ");
+});
+
+test("finalizeEdits removes Roughdraft attributes for all finalized marks", () => {
+  const src = 'a {++x++}{id="a1"} b {--y--}{id="d1"} c {~~o~>n~~}{id="s1"} d {>>Claude: note<<}{id="c1"}';
+  const r = parse(src);
+  const out = applyEdits(src, finalizeEdits(r, DEFAULT_FINALIZE));
   assert.equal(out, "a x b y c o d ");
 });
 
