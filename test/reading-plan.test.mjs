@@ -104,6 +104,19 @@ test("intersectingOps: close-only (markup ends in section)", () => {
   assert.equal(ops[0].closeIn, true);
 });
 
+test("intersectingOps: attributed node close boundary is the CriticMarkup close", () => {
+  const src = 'before {++addition++}{id="a1" by="Codex"} after';
+  const parsed = parse(src);
+  const addn = parsed.nodes.find((n) => n.kind === "addition");
+  assert.ok(addn, "should have addition");
+  assert.equal(src.slice(addn.markupTo, addn.to), '{id="a1" by="Codex"}');
+
+  const ops = intersectingOps(parsed, addn.from, addn.markupTo);
+  assert.equal(ops.length, 1);
+  assert.equal(ops[0].openIn, true);
+  assert.equal(ops[0].closeIn, true);
+});
+
 test("intersectingOps: fully interior section (paragraph in the middle of a deletion)", () => {
   const src = "intro {--first paragraph of deletion\n\nmiddle paragraph\n\nlast paragraph of deletion--} outro";
   const parsed = parse(src);

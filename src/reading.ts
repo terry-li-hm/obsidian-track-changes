@@ -18,6 +18,8 @@
 //                  Obsidian's own <mark> (it eats == itself)
 //   {>>…<<}     -> remove tokens AND body; if readingShowComments is on,
 //                  emit one icon per thread with a hover preview
+// Trailing Roughdraft attributes (`{id="…" by="…"}`) are metadata, not
+// reading text, and are removed with the CriticMarkup span.
 
 import { setIcon, setTooltip, type MarkdownPostProcessorContext } from "obsidian";
 import {
@@ -101,6 +103,8 @@ interface LocatedOp {
   wrapEl?: Element;
   /** For substitutions, the `~>` separator position when it falls in this section. */
   arrowRange?: DomRange;
+  /** Optional trailing Roughdraft attribute block after the CriticMarkup close. */
+  attrRange?: DomRange;
 }
 
 function applyToSection(
@@ -175,6 +179,13 @@ function locateAll(
       if (found) {
         loc.closeRange = found.range;
         cursor = found.range.end;
+        if (op.node.attributesRaw) {
+          const attrs = locateLiteral(el, cursor, op.node.attributesRaw);
+          if (attrs) {
+            loc.attrRange = attrs.range;
+            cursor = attrs.range.end;
+          }
+        }
       }
     }
     // Body-removing kinds need both expected endpoints — using
@@ -355,19 +366,20 @@ function applyLocated(
   iconTargets: Set<number>,
   opts: ReadingOptions,
 ): void {
-  const { op, openRange, closeRange, arrowRange } = loc;
+  const { op, openRange, closeRange, arrowRange, attrRange } = loc;
   const { node } = op;
   const doc = el.ownerDocument;
 
   switch (node.kind) {
     case "addition":
     case "highlight": {
+      if (attrRange) deleteRange(doc, attrRange);
       if (closeRange) deleteRange(doc, closeRange);
       if (openRange) deleteRange(doc, openRange);
       return;
     }
     case "deletion": {
-      removeSpan(doc, el, openRange ?? null, closeRange ?? null);
+      removeSpan(doc, el, openRange ?? null, attrRange ?? closeRange ?? null);
       return;
     }
     case "substitution": {
@@ -386,6 +398,7 @@ function applyLocated(
       //   handleFullyInterior elsewhere; here we conservatively drop the
       //   leading part up to section end if open is present.
       if (arrowRange && closeRange) {
+        if (attrRange) deleteRange(doc, attrRange);
         deleteRange(doc, closeRange);
         const start: TextPos | null = openRange ? openRange.start : startOfElement(el);
         if (start) deleteSpan(doc, { start, end: arrowRange.end });
@@ -393,6 +406,7 @@ function applyLocated(
         const start: TextPos | null = openRange ? openRange.start : startOfElement(el);
         if (start) deleteSpan(doc, { start, end: arrowRange.end });
       } else if (closeRange) {
+        if (attrRange) deleteRange(doc, attrRange);
         deleteRange(doc, closeRange);
       } else if (openRange) {
         const endPos = endOfElement(el);
@@ -406,7 +420,7 @@ function applyLocated(
     case "comment": {
       const idx = op.nodeIndex;
       const wantIcon = opts.showComments && iconTargets.has(idx);
-      const insertion = removeSpan(doc, el, openRange ?? null, closeRange ?? null);
+      const insertion = removeSpan(doc, el, openRange ?? null, attrRange ?? closeRange ?? null);
       if (wantIcon && insertion) {
         const icon = makeCommentIcon(doc, parsed, idx);
         if (icon) insertion.insertNode(icon);
@@ -567,8 +581,20 @@ function nextWalkableText(root: HTMLElement, after: Text): Text | null {
 
 // ---------- Safety-net DOM cleanup ----------
 
-const LITERAL_MARKUP_RE =
-  /\{>>([\s\S]*?)<<\}|\{\+\+([\s\S]*?)\+\+\}|\{--([\s\S]*?)--\}|\{~~([\s\S]*?)~>([\s\S]*?)~~\}|\{==([\s\S]*?)==\}/g;
+const ROUGHDRAFT_ATTR_LITERAL =
+  String.raw`\{(?:\s*[A-Za-z_][\w.-]*\s*=\s*"(?:\\.|[^"\\])*")+\s*\}`;
+const LITERAL_MARKUP_RE = new RegExp(
+  String.raw`\{>>([\s\S]*?)<<\}(?:${ROUGHDRAFT_ATTR_LITERAL})?` +
+  "|" +
+  String.raw`\{\+\+([\s\S]*?)\+\+\}(?:${ROUGHDRAFT_ATTR_LITERAL})?` +
+  "|" +
+  String.raw`\{--([\s\S]*?)--\}(?:${ROUGHDRAFT_ATTR_LITERAL})?` +
+  "|" +
+  String.raw`\{~~([\s\S]*?)~>([\s\S]*?)~~\}(?:${ROUGHDRAFT_ATTR_LITERAL})?` +
+  "|" +
+  String.raw`\{==([\s\S]*?)==\}(?:${ROUGHDRAFT_ATTR_LITERAL})?`,
+  "g",
+);
 
 /**
  * Best-effort DOM-only cleanup that doesn't need source-of-truth from

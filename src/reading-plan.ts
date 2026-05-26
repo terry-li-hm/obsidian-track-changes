@@ -42,7 +42,7 @@ export interface IntersectingOp {
   nodeIndex: number;
   /** Opening brace is inside this section. */
   openIn: boolean;
-  /** Closing brace is inside this section. */
+  /** CriticMarkup closing brace is inside this section. */
   closeIn: boolean;
 }
 
@@ -59,7 +59,7 @@ export function intersectingOps(
       node: n,
       nodeIndex: i,
       openIn: n.from >= secFrom && n.from < secTo,
-      closeIn: n.to > secFrom && n.to <= secTo,
+      closeIn: n.markupTo > secFrom && n.markupTo <= secTo,
     });
   }
   return out;
