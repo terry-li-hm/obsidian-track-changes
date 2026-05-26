@@ -138,14 +138,14 @@ function buildDecorations(state: EditorState, callbacks: DecorationCallbacks): D
         const cls = n.authorName ? "tc-raw-comment tc-raw-comment-named" : "tc-raw-comment tc-raw-comment-you";
         builder.add(n.from, n.to, Decoration.mark({ class: cls }));
       } else if (n.kind === "addition") {
-        builder.add(n.from + 3, n.to - 3, Decoration.mark({ class: "tc-addition" }));
+        builder.add(n.from + 3, n.markupTo - 3, Decoration.mark({ class: "tc-addition" }));
       } else if (n.kind === "deletion") {
-        builder.add(n.from + 3, n.to - 3, Decoration.mark({ class: "tc-deletion" }));
+        builder.add(n.from + 3, n.markupTo - 3, Decoration.mark({ class: "tc-deletion" }));
       } else if (n.kind === "substitution") {
         const oldFrom = n.from + 3;
         const oldTo = oldFrom + n.oldText.length;
         const newFrom = oldTo + 2;
-        const newTo = n.to - 3;
+        const newTo = n.markupTo - 3;
         builder.add(oldFrom, oldTo, Decoration.mark({ class: "tc-sub-raw-old" }));
         builder.add(newFrom, newTo, Decoration.mark({ class: "tc-sub-raw-new" }));
       }
@@ -205,7 +205,7 @@ function buildDecorations(state: EditorState, callbacks: DecorationCallbacks): D
 
     if (n.kind === "addition") {
       const innerFrom = n.from + 3;
-      const innerTo = n.to - 3;
+      const innerTo = n.markupTo - 3;
       const inRange = rangeTouchesSelection(state, n.from, n.to);
       if (!inRange) builder.add(n.from, innerFrom, hiddenDecoration());
       builder.add(
@@ -219,7 +219,7 @@ function buildDecorations(state: EditorState, callbacks: DecorationCallbacks): D
       if (!inRange) builder.add(innerTo, n.to, hiddenDecoration());
     } else if (n.kind === "deletion") {
       const innerFrom = n.from + 3;
-      const innerTo = n.to - 3;
+      const innerTo = n.markupTo - 3;
       const inRange = rangeTouchesSelection(state, n.from, n.to);
       if (!inRange) builder.add(n.from, innerFrom, hiddenDecoration());
       builder.add(
@@ -235,7 +235,7 @@ function buildDecorations(state: EditorState, callbacks: DecorationCallbacks): D
       const oldFrom = n.from + 3;
       const oldTo = oldFrom + n.oldText.length;
       const newFrom = oldTo + 2;
-      const newTo = n.to - 3;
+      const newTo = n.markupTo - 3;
       const inRange = rangeTouchesSelection(state, n.from, n.to);
       if (!inRange) {
         builder.add(n.from, oldFrom, hiddenDecoration());
@@ -284,7 +284,7 @@ function buildDecorations(state: EditorState, callbacks: DecorationCallbacks): D
       }
     } else if (n.kind === "highlight") {
       const innerFrom = n.from + 3;
-      const innerTo = n.to - 3;
+      const innerTo = n.markupTo - 3;
       const inRange = rangeTouchesSelection(state, n.from, n.to);
       if (!inRange) builder.add(n.from, innerFrom, hiddenDecoration());
       builder.add(

@@ -19,10 +19,18 @@ export interface BaseNode {
   kind: NodeKind;
   /** character offset of the opening brace */
   from: number;
-  /** character offset just past the closing brace */
+  /** character offset just past the whole node, including trailing Roughdraft attributes */
   to: number;
   /** raw source text from `from` to `to` */
   raw: string;
+  /** character offset just past the CriticMarkup closing delimiter */
+  markupTo: number;
+  /** raw CriticMarkup text without trailing Roughdraft attributes */
+  markupRaw: string;
+  /** exact trailing Roughdraft attribute block, when present */
+  attributesRaw?: string;
+  /** parsed Roughdraft key/value attributes, when present */
+  attributes?: Record<string, string>;
 }
 
 export interface CommentNode extends BaseNode {
@@ -173,6 +181,44 @@ function rangeEndpointInCode(from: number, to: number, regions: Array<[number, n
   return endpointInRegion(from, regions) || endpointInRegion(to - 1, regions);
 }
 
+const ROUGHDRAFT_ATTR_RE =
+  /^\{((?:\s*[A-Za-z_][\w.-]*\s*=\s*"(?:\\.|[^"\\])*")+)\s*\}/;
+const ROUGHDRAFT_ATTR_PAIR_RE =
+  /([A-Za-z_][\w.-]*)\s*=\s*"((?:\\.|[^"\\])*)"/g;
+
+function parseRoughdraftAttributes(
+  source: string,
+  offset: number,
+): { raw: string; attributes: Record<string, string> } | null {
+  if (source[offset] !== "{") return null;
+  const match = source.slice(offset).match(ROUGHDRAFT_ATTR_RE);
+  if (!match) return null;
+
+  const attributes: Record<string, string> = {};
+  for (const pair of match[1].matchAll(ROUGHDRAFT_ATTR_PAIR_RE)) {
+    attributes[pair[1]] = pair[2].replace(/\\(["\\])/g, "$1");
+  }
+
+  return { raw: match[0], attributes };
+}
+
+function baseFromMatch(source: string, match: RegExpMatchArray): Omit<BaseNode, "kind"> {
+  const from = match.index ?? 0;
+  const markupRaw = match[0];
+  const markupTo = from + markupRaw.length;
+  const attrs = parseRoughdraftAttributes(source, markupTo);
+  const to = markupTo + (attrs?.raw.length ?? 0);
+
+  return {
+    from,
+    to,
+    raw: source.slice(from, to),
+    markupTo,
+    markupRaw,
+    ...(attrs ? { attributesRaw: attrs.raw, attributes: attrs.attributes } : {}),
+  };
+}
+
 export interface ParseOptions {
   /** Skip markup that falls inside fenced code blocks or inline code spans. Defaults to true. */
   skipCode?: boolean;
@@ -186,52 +232,41 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
   // Substitutions first — their {~~...~~} could otherwise be confused with highlights.
   for (const m of source.matchAll(SUBSTITUTION_RE)) {
     nodes.push({
+      ...baseFromMatch(source, m),
       kind: "substitution",
-      from: m.index,
-      to: m.index + m[0].length,
-      raw: m[0],
       oldText: m[1],
       newText: m[2],
     });
   }
   for (const m of source.matchAll(ADDITION_RE)) {
     nodes.push({
+      ...baseFromMatch(source, m),
       kind: "addition",
-      from: m.index,
-      to: m.index + m[0].length,
-      raw: m[0],
       text: m[1],
     });
   }
   for (const m of source.matchAll(DELETION_RE)) {
     nodes.push({
+      ...baseFromMatch(source, m),
       kind: "deletion",
-      from: m.index,
-      to: m.index + m[0].length,
-      raw: m[0],
       text: m[1],
     });
   }
   for (const m of source.matchAll(HIGHLIGHT_RE)) {
     nodes.push({
+      ...baseFromMatch(source, m),
       kind: "highlight",
-      from: m.index,
-      to: m.index + m[0].length,
-      raw: m[0],
       text: m[1],
     });
   }
   for (const m of source.matchAll(COMMENT_RE)) {
-    const raw = m[0];
     const body = m[1];
     const authorMatch = body.match(AUTHOR_RE);
     const authorName = authorMatch ? authorMatch[1] : null;
     const text = authorMatch ? body.slice(authorMatch[0].length) : body;
     nodes.push({
+      ...baseFromMatch(source, m),
       kind: "comment",
-      from: m.index,
-      to: m.index + raw.length,
-      raw,
       text,
       authorName,
     });
@@ -248,7 +283,7 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
   let lastEnd = -1;
   for (const n of nodes) {
     if (n.from < lastEnd) continue; // overlap with previous accepted node
-    if (skipCode && rangeEndpointInCode(n.from, n.to, codeRegions)) continue;
+    if (skipCode && rangeEndpointInCode(n.from, n.markupTo, codeRegions)) continue;
     accepted.push(n);
     lastEnd = n.to;
   }
