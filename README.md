@@ -40,6 +40,16 @@ Manual: drop `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/pl
 npm install && npm run build
 ```
 
+## Runtime Smoke Test
+
+After building, run the optional Obsidian smoke test:
+
+```sh
+npm run test:obsidian
+```
+
+It launches Obsidian against a generated disposable vault under `test/.obsidian-smoke/`, enables only this local plugin build, opens a CriticMarkup/Roughdraft fixture, verifies the review panel, writes one reply through the panel, and then shuts the isolated Obsidian process down.
+
 ## License
 
 MIT.

@@ -14,10 +14,13 @@ npm run dev              # esbuild watch -> main.js (with inline sourcemaps)
 npm run build            # tsc --noEmit + esbuild production bundle
 npm run typecheck        # tsc --noEmit -skipLibCheck
 npm test                 # runs all six test files sequentially
+npm run test:obsidian    # optional GUI smoke test in a disposable vault/profile
 node test/parser.test.mjs        # run a single test file
 ```
 
 Tests are plain Node ESM scripts (`.mjs`) under `test/` — no test framework. They import compiled TS via Node's TS loader path or by re-implementing fixtures; check an existing test before adding one.
+
+`npm run test:obsidian` launches the local Obsidian app with an isolated user-data profile and generated throwaway vault under `test/.obsidian-smoke/`. It requires a built `main.js`, verifies the real review panel, writes a Roughdraft-attributed reply, and tears down only its own Obsidian process group.
 
 To load the dev build into Obsidian: symlink or copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/track-changes/`.
 
