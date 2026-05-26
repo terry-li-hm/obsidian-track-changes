@@ -23,11 +23,49 @@ export interface SourceEdit {
 
 const COMMENT_CLOSE = "<<}";
 
+export interface ReplyMetadataOptions {
+  /** Display/durable author name for the new reply, written as `by`. */
+  authorName?: string;
+  /** ISO timestamp for the new reply, written as `at`. */
+  timestamp?: string;
+  /** Explicit document-local id. If omitted, the next available `cN` id is used. */
+  id?: string;
+  /** Explicit parent id for `re`. Use null to omit even when the root has an id. */
+  re?: string | null;
+}
+
 export function validateReplyText(text: string): string | null {
   if (text.includes(COMMENT_CLOSE)) {
     return "Replies cannot contain the CriticMarkup comment closing marker <<}.";
   }
   return null;
+}
+
+function escapeAttributeValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+}
+
+function serializeRoughdraftAttributes(
+  attrs: Record<string, string | null | undefined>,
+): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === null || value === undefined || value === "") continue;
+    parts.push(`${key}="${escapeAttributeValue(value)}"`);
+  }
+  return parts.length > 0 ? `{${parts.join(" ")}}` : "";
+}
+
+function nextCommentId(parsed: ParseResult): string {
+  const used = new Set<string>();
+  for (const node of parsed.nodes) {
+    const id = node.attributes?.id;
+    if (id) used.add(id);
+  }
+
+  let n = 1;
+  while (used.has(`c${n}`)) n++;
+  return `c${n}`;
 }
 
 /** Apply a list of edits to a source string. Edits must be non-overlapping. */
@@ -188,6 +226,7 @@ export function appendReply(
   thread: Thread,
   parsed: ParseResult,
   text: string,
+  metadata?: ReplyMetadataOptions,
 ): SourceEdit {
   const validationError = validateReplyText(text);
   if (validationError) throw new Error(validationError);
@@ -197,7 +236,16 @@ export function appendReply(
       ? thread.replyIndexes[thread.replyIndexes.length - 1]
       : thread.rootIndex;
   const last = parsed.nodes[lastIdx] as CommentNode;
-  const reply = `{>>${text}<<}`;
+  const root = parsed.nodes[thread.rootIndex] as CommentNode;
+  const attributes = metadata
+    ? serializeRoughdraftAttributes({
+      id: metadata.id ?? nextCommentId(parsed),
+      by: metadata.authorName,
+      at: metadata.timestamp,
+      re: metadata.re === undefined ? root.attributes?.id : metadata.re,
+    })
+    : "";
+  const reply = `{>>${text}<<}${attributes}`;
   // Insert with no whitespace so the threading parser groups it.
   return {
     from: last.to,

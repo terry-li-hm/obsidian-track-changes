@@ -142,6 +142,14 @@ test("Roughdraft attributed comments still form adjacent reply threads", () => {
   assert.equal(r.nodes[r.threads[0].replyIndexes[0]].attributes.re, "c1");
 });
 
+test("unprefixed attributed comment uses Roughdraft by as author", () => {
+  const r = parse('{>>done<<}{id="c1" by="Terry" at="2026-05-26T15:51:00Z"}');
+  assert.equal(r.nodes.length, 1);
+  assert.equal(r.nodes[0].kind, "comment");
+  assert.equal(r.nodes[0].authorName, "Terry");
+  assert.equal(r.nodes[0].text, "done");
+});
+
 test("parses addition", () => {
   const r = parse("x {++hello++} y");
   assert.equal(r.nodes.length, 1);

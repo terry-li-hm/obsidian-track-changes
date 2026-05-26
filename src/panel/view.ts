@@ -43,6 +43,7 @@ import {
   deleteThread,
   removeHighlight,
   validateReplyText,
+  type ReplyMetadataOptions,
   type SourceEdit,
 } from "../operations";
 
@@ -61,6 +62,8 @@ export interface PanelHost {
   getCurrentSource(file: TFile): string | null;
   /** Apply a list of edits to a file, preserving undo history when possible. */
   applyEdits(file: TFile, edits: SourceEdit[]): Promise<void>;
+  /** Build optional Roughdraft metadata for a newly authored reply. */
+  makeReplyMetadata?(thread: Thread, parsed: ParseResult): ReplyMetadataOptions | undefined;
   /**
    * Scroll the editor to a source offset. If `flashChip` is true, the target
    * is treated as a comment chip: the chip blinks briefly so it's easier to
@@ -350,7 +353,13 @@ export class ReviewPanelView extends ItemView {
         return;
       }
       this.replyDrafts.delete(thread.from);
-      const edit = appendReply(this.currentSource, thread, parsed, text);
+      const edit = appendReply(
+        this.currentSource,
+        thread,
+        parsed,
+        text,
+        this.host.makeReplyMetadata?.(thread, parsed),
+      );
       await this.host.applyEdits(file, [edit]);
     };
     const actions = reply.createDiv({ cls: "tc-reply-actions" });

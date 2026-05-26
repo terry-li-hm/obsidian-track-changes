@@ -119,6 +119,10 @@ export default class TrackChangesCriticMarkupPlugin extends Plugin {
       applyEdits: async (file, edits) => {
         await this.applyEditsToFile(file, edits);
       },
+      makeReplyMetadata: () => ({
+        authorName: this.settings.replyAuthorName.trim() || DEFAULT_SETTINGS.replyAuthorName,
+        timestamp: new Date().toISOString(),
+      }),
       revealOffset: (file, offset, length, flashChip) =>
         this.revealOffsetInEditor(file, offset, length, flashChip ?? false),
       isFileOpen: (file) => this.findEditorForFile(file) !== null,

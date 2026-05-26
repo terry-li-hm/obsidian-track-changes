@@ -261,11 +261,12 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
   }
   for (const m of source.matchAll(COMMENT_RE)) {
     const body = m[1];
+    const base = baseFromMatch(source, m);
     const authorMatch = body.match(AUTHOR_RE);
-    const authorName = authorMatch ? authorMatch[1] : null;
+    const authorName = authorMatch ? authorMatch[1] : base.attributes?.by ?? null;
     const text = authorMatch ? body.slice(authorMatch[0].length) : body;
     nodes.push({
-      ...baseFromMatch(source, m),
+      ...base,
       kind: "comment",
       text,
       authorName,

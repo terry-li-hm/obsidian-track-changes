@@ -167,6 +167,43 @@ test("appendReply attaches after the last message of an existing thread", () => 
   assert.equal(out, "x {>>Claude: a<<}{>>ignore<<}{>>actually no<<} y");
 });
 
+test("appendReply can write Roughdraft reply metadata", () => {
+  const src = 'x {>>Claude: a<<}{id="c1" by="Claude"} y';
+  const r = parse(src);
+  const edit = appendReply(src, r.threads[0], r, "done", {
+    authorName: "Terry",
+    timestamp: "2026-05-26T15:51:00.000Z",
+  });
+  const out = applyEdits(src, [edit]);
+  assert.equal(
+    out,
+    'x {>>Claude: a<<}{id="c1" by="Claude"}{>>done<<}{id="c2" by="Terry" at="2026-05-26T15:51:00.000Z" re="c1"} y',
+  );
+
+  const r2 = parse(out);
+  assert.equal(r2.threads.length, 1);
+  assert.equal(r2.threads[0].replyIndexes.length, 1);
+  const reply = r2.nodes[r2.threads[0].replyIndexes[0]];
+  assert.equal(reply.authorName, "Terry");
+  assert.deepEqual(reply.attributes, {
+    id: "c2",
+    by: "Terry",
+    at: "2026-05-26T15:51:00.000Z",
+    re: "c1",
+  });
+});
+
+test("appendReply chooses the next unused comment id", () => {
+  const src = 'x {>>Claude: a<<}{id="c1"}{>>Codex: b<<}{id="c3" re="c1"} y';
+  const r = parse(src);
+  const edit = appendReply(src, r.threads[0], r, "middle", {
+    authorName: "Terry",
+    timestamp: "2026-05-26T15:52:00.000Z",
+  });
+  const out = applyEdits(src, [edit]);
+  assert.ok(out.includes('{id="c2" by="Terry" at="2026-05-26T15:52:00.000Z" re="c1"}'));
+});
+
 test("appendReply rejects comment closing delimiters in reply text", () => {
   const src = "x {>>Claude: a<<} y";
   const r = parse(src);

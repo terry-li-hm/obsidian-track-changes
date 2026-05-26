@@ -16,6 +16,8 @@ export interface TrackChangesCriticMarkupSettings {
    */
   revealMarkupOnCommentJump: boolean;
   clickMarksToOpenPanel: boolean;
+  /** `by` value used when the panel writes a new reply with Roughdraft metadata. */
+  replyAuthorName: string;
   /** Defaults that pre-populate the Finalize dialog. */
   finalize: FinalizeOptions;
 }
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: TrackChangesCriticMarkupSettings = {
   readingShowComments: true,
   revealMarkupOnCommentJump: false,
   clickMarksToOpenPanel: false,
+  replyAuthorName: "You",
   finalize: { ...DEFAULT_FINALIZE },
 };
 
@@ -74,6 +77,21 @@ export class TrackChangesCriticMarkupSettingsTab extends PluginSettingTab {
           this.plugin.settings.clickMarksToOpenPanel = v;
           await this.plugin.saveSettings();
         }),
+      );
+
+    new Setting(containerEl)
+      .setName("Reply author name")
+      .setDesc(
+        "Written into new panel replies as Roughdraft by=\"...\" metadata.",
+      )
+      .addText((t) =>
+        t
+          .setPlaceholder("You")
+          .setValue(this.plugin.settings.replyAuthorName)
+          .onChange(async (v) => {
+            this.plugin.settings.replyAuthorName = v.trim() || DEFAULT_SETTINGS.replyAuthorName;
+            await this.plugin.saveSettings();
+          }),
       );
 
     new Setting(containerEl).setName("Finalize for publish — defaults").setHeading();

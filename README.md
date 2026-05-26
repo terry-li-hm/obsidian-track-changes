@@ -1,6 +1,6 @@
 # Track Changes
 
-Review [CriticMarkup](http://criticmarkup.com/) suggestions in an Obsidian side panel. Accept, reject, or reply — straight back into the markdown, no sidecar state.
+Review [CriticMarkup](http://criticmarkup.com/) suggestions in an Obsidian side panel. Accept, reject, or reply — straight back into the markdown, no sidecar state. This branch also preserves Roughdraft-style attribute metadata immediately after each mark, such as `{id="c1" by="Codex" at="2026-05-26T15:51:00Z"}`.
 
 ![Track Changes panel showing multi-author comments from Claude and GPT](docs/screenshot.png)
 
@@ -14,6 +14,7 @@ Intended for AI-assisted review: the agent leaves `{++…++}`, `{--…--}`, `{~~
 - **Finalize for publish** — resolves all remaining markup in one pass
 - Reading mode: accepted preview or raw side-by-side
 - Code blocks left alone
+- Roughdraft attributes stay attached to their mark for edits, are hidden in reading mode, and are written on new panel replies
 
 ## Interaction
 
