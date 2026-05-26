@@ -1,4 +1,4 @@
-.PHONY: dev build test test-obsidian release
+.PHONY: dev build test test-obsidian install-vault release
 
 dev:
 	npm run dev
@@ -11,6 +11,9 @@ test:
 
 test-obsidian:
 	npm run test:obsidian
+
+install-vault:
+	npm run install:vault --
 
 # Tag HEAD with the version in manifest.json and push it. The push triggers
 # the release workflow on GitHub, which builds, attests, and publishes.

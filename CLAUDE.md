@@ -15,6 +15,7 @@ npm run build            # tsc --noEmit + esbuild production bundle
 npm run typecheck        # tsc --noEmit -skipLibCheck
 npm test                 # runs all six test files sequentially
 npm run test:obsidian    # optional GUI smoke test in a disposable vault/profile
+npm run install:vault -- /absolute/path/to/vault  # dry-run guarded local install
 node test/parser.test.mjs        # run a single test file
 ```
 
@@ -23,6 +24,8 @@ Tests are plain Node ESM scripts (`.mjs`) under `test/` — no test framework. T
 `npm run test:obsidian` launches the local Obsidian app with an isolated user-data profile and generated throwaway vault under `test/.obsidian-smoke/`. It requires a built `main.js`, verifies the real review panel, writes a Roughdraft-attributed reply, and tears down only its own Obsidian process group.
 
 To load the dev build into Obsidian: symlink or copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/track-changes/`.
+
+Prefer `npm run install:vault -- /absolute/path/to/vault` for manual installs. It is dry-run by default; add `--apply` to copy. Applying to `/Users/terry/chromatin` additionally requires `--allow-chromatin-reviewed` or `TRACK_CHANGES_CHROMATIN_REVIEWED=1`. Do not bypass this guard in agent work.
 
 ## Architecture
 

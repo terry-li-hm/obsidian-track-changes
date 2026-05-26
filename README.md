@@ -34,6 +34,14 @@ Intended for AI-assisted review: the agent leaves `{++…++}`, `{--…--}`, `{~~
 
 Manual: drop `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/track-changes/`.
 
+This fork also includes a guarded local installer. It defaults to dry run:
+
+```sh
+npm run install:vault -- /absolute/path/to/vault
+```
+
+To actually copy the built artifacts, add `--apply`. Applying to `/Users/terry/chromatin` additionally requires `--allow-chromatin-reviewed`, so accidental live-vault installation fails closed.
+
 ## Build
 
 ```sh
@@ -49,6 +57,8 @@ npm run test:obsidian
 ```
 
 It launches Obsidian against a generated disposable vault under `test/.obsidian-smoke/`, enables only this local plugin build, opens a CriticMarkup/Roughdraft fixture, verifies the review panel, writes one reply through the panel, and then shuts the isolated Obsidian process down.
+
+The review packet for deciding whether to install this fork into Chromatin is in [`docs/CHROMATIN_REVIEW_PACKET.md`](docs/CHROMATIN_REVIEW_PACKET.md).
 
 ## License
 
